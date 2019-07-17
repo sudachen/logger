@@ -6,12 +6,14 @@ import (
 )
 
 func Rinfo(a string) {
-	Info(a)
+	defaultLogger.output(sInfo, 0, a)
 	internal.Info(a)
 }
 
 func Rinfof(a string, b... interface{}) {
-	Rinfo(fmt.Sprintf(a, b...))
+	t := fmt.Sprintf(a, b...)
+	defaultLogger.output(sInfo, 0, t)
+	internal.Info(a)
 }
 
 func ConnectSentry(dsn string) error {
