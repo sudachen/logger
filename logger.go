@@ -18,7 +18,7 @@ package logger
 
 import (
 	"fmt"
-	"github.com/google/logger/remote"
+	"github.com/google/logger/internal"
 	"io"
 	"log"
 	"os"
@@ -96,8 +96,8 @@ func Init(name string, verbose, systemLog bool, logFile io.Writer) *Logger {
 	}
 
 	// Windows services don't have stdout/stderr. Writes will fail, so try them last.
-	eLogs = append(eLogs, remote.ErrorLog)
-	wLogs = append(wLogs, remote.WarnLog)
+	eLogs = append(eLogs, internal.ErrorLog)
+	wLogs = append(wLogs, internal.WarnLog)
 	if verbose {
 		iLogs = append(iLogs, os.Stdout)
 		wLogs = append(wLogs, os.Stdout)
@@ -289,8 +289,8 @@ func (l *Logger) Fatalf(format string, v ...interface{}) {
 func SetFlags(flag int) {
 	defaultLogger.infoLog.SetFlags(flag)
 	defaultLogger.warningLog.SetFlags(flag)
-	defaultLogger.errorLog.SetFlags(flag)
-	defaultLogger.fatalLog.SetFlags(flag)
+	//defaultLogger.errorLog.SetFlags(flag)
+	//defaultLogger.fatalLog.SetFlags(flag)
 }
 
 // Info uses the default logger and logs with the Info severity.
