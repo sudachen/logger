@@ -10,7 +10,7 @@ func Rinfo(a string) {
 	internal.Info(a)
 }
 
-func Rinfof(a string, b... interface{}) {
+func Rinfof(a string, b ...interface{}) {
 	t := fmt.Sprintf(a, b...)
 	defaultLogger.output(sInfo, 0, t)
 	internal.Info(a)

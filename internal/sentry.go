@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-const flashTimeout = 3*time.Second
+const flashTimeout = 3 * time.Second
 
 var connected = false
-var ErrorLog = &snio{ sentry.LevelError }
-var WarnLog = &snio{ sentry.LevelWarning }
+var ErrorLog = &snio{sentry.LevelError}
+var WarnLog = &snio{sentry.LevelWarning}
 var wg sync.WaitGroup
 
 func ConnectSentry(dsn string) error {
@@ -31,14 +31,14 @@ func (sn *snio) Write(p []byte) (n int, err error) {
 		wg.Add(1)
 		go func() {
 			sentry.WithScope(func(scope *sentry.Scope) {
-				scope.SetLevel(sn.level);
+				scope.SetLevel(sn.level)
 				sentry.CaptureMessage(string(p))
 			})
 			sentry.Flush(flashTimeout)
 			wg.Done()
 		}()
 	}
-	return 0,nil
+	return 0, nil
 }
 
 func Info(text string) {
@@ -46,7 +46,7 @@ func Info(text string) {
 		wg.Add(1)
 		go func() {
 			sentry.WithScope(func(scope *sentry.Scope) {
-				scope.SetLevel(sentry.LevelInfo);
+				scope.SetLevel(sentry.LevelInfo)
 				sentry.CaptureMessage(text)
 			})
 			sentry.Flush(flashTimeout)
