@@ -18,7 +18,7 @@ package logger
 
 import (
 	"fmt"
-	"github.com/google/logger/internal"
+	"github.com/sudachen/logger/internal"
 	"io"
 	"log"
 	"os"
