@@ -18,11 +18,12 @@ package logger
 
 import (
 	"fmt"
-	"github.com/sudachen/logger/internal"
+	"github.com/getsentry/sentry-go"
 	"io"
 	"log"
 	"os"
 	"sync"
+	"time"
 )
 
 type severity int
@@ -75,56 +76,49 @@ func init() {
 // logger.
 // If the logFile passed in also satisfies io.Closer, logFile.Close will be called
 // when closing the logger.
-func Init(name string, verbose, systemLog bool, logFile io.Writer) *Logger {
-	var il, wl, el io.Writer
-	var syslogErr error
-	if systemLog {
-		il, wl, el, syslogErr = setup(name)
-	}
-
-	iLogs := []io.Writer{logFile}
-	wLogs := []io.Writer{logFile}
-	eLogs := []io.Writer{logFile}
-	if il != nil {
-		iLogs = append(iLogs, il)
-	}
-	if wl != nil {
-		wLogs = append(wLogs, wl)
-	}
-	if el != nil {
-		eLogs = append(eLogs, el)
-	}
-
-	// Windows services don't have stdout/stderr. Writes will fail, so try them last.
-	eLogs = append(eLogs, internal.ErrorLog)
-	wLogs = append(wLogs, internal.WarnLog)
-	if verbose {
-		iLogs = append(iLogs, os.Stdout)
-		wLogs = append(wLogs, os.Stdout)
-		eLogs = append(eLogs, os.Stderr)
+func Init(name string, verbose, _ bool, logFile io.Writer) *Logger {
+	makeLog := func(level severity, w...io.Writer) *log.Logger {
+		var tag string
+		var a []io.Writer
+		if logFile != nil{
+			a = append(a,logFile)
+		}
+		if verbose {
+			switch level {
+			case sInfo:
+				a = append(a, os.Stdout); tag = tagInfo
+			case sWarning:
+				a = append(a, os.Stdout); tag = tagWarning
+			case sError:
+				a = append(a, os.Stderr); tag = tagError
+			case sFatal:
+				a = append(a, os.Stderr); tag = tagFatal
+			}
+		}
+		a = append(a, w...)
+		return log.New(io.MultiWriter(a...), tag, flags)
 	}
 
 	l := Logger{
-		infoLog:    log.New(io.MultiWriter(iLogs...), tagInfo, flags),
-		warningLog: log.New(io.MultiWriter(wLogs...), tagWarning, flags),
-		errorLog:   log.New(io.MultiWriter(eLogs...), tagError, flags),
-		fatalLog:   log.New(io.MultiWriter(eLogs...), tagFatal, flags),
+		infoLog:    makeLog(sInfo, sentryInfoLog),
+		warningLog: makeLog(sWarning, sentryWarnLog),
+		errorLog:   makeLog(sError, sentryErrorLog),
+		fatalLog:   makeLog(sFatal, sentryFatalLog),
 	}
-	for _, w := range []io.Writer{logFile, il, wl, el} {
-		if c, ok := w.(io.Closer); ok && c != nil {
+
+	l.closers = append(l.closers,sentryFatalLog)
+	if logFile != nil {
+		if c, ok := logFile.(io.Closer); ok && c != nil {
 			l.closers = append(l.closers, c)
 		}
 	}
+
 	l.initialized = true
 
 	logLock.Lock()
 	defer logLock.Unlock()
 	if !defaultLogger.initialized {
 		defaultLogger = &l
-	}
-
-	if syslogErr != nil {
-		Error(syslogErr)
 	}
 
 	return &l
@@ -398,4 +392,37 @@ func Fatalf(format string, v ...interface{}) {
 	defaultLogger.output(sFatal, 0, fmt.Sprintf(format, v...))
 	defaultLogger.Close()
 	os.Exit(1)
+}
+
+const flashTimeout = 3 * time.Second
+
+var sentryFatalLog = &snio{sentry.LevelFatal}
+var sentryErrorLog = &snio{sentry.LevelError}
+var sentryWarnLog = &snio{sentry.LevelWarning}
+var sentryInfoLog = &snio{sentry.LevelInfo}
+
+type snio struct {
+	level sentry.Level
+}
+
+func sentryOutput(p []byte, level sentry.Level) {
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetLevel(level)
+		sentry.CaptureMessage(string(p))
+	})
+	if level == sentry.LevelFatal {
+		sentry.Flush(flashTimeout)
+	}
+}
+
+func (sn *snio) Write(p []byte) (n int, err error) {
+	if sentry.CurrentHub().Client() != nil {
+		sentryOutput(p,sn.level)
+	}
+	return 0, nil
+}
+
+func (sn *snio) Close() error {
+	sentry.Flush(flashTimeout)
+	return nil
 }
