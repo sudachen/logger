@@ -80,22 +80,28 @@ func Init(name string, verbose, _ bool, logFile io.Writer) *Logger {
 	makeLog := func(level severity, w...io.Writer) *log.Logger {
 		var tag string
 		var a []io.Writer
+		var v io.Writer
 		if logFile != nil{
 			a = append(a,logFile)
 		}
-		if verbose {
-			switch level {
-			case sInfo:
-				a = append(a, os.Stdout); tag = tagInfo
-			case sWarning:
-				a = append(a, os.Stdout); tag = tagWarning
-			case sError:
-				a = append(a, os.Stderr); tag = tagError
-			case sFatal:
-				a = append(a, os.Stderr); tag = tagFatal
-			}
+		switch level {
+		case sInfo:
+			v = os.Stdout
+			tag = tagInfo
+		case sWarning:
+			v = os.Stdout
+			tag = tagWarning
+		case sError:
+			v = os.Stderr
+			tag = tagError
+		case sFatal:
+			v = os.Stderr
+			tag = tagFatal
 		}
 		a = append(a, w...)
+		if verbose {
+			a = append(a, v)
+		}
 		return log.New(io.MultiWriter(a...), tag, flags)
 	}
 
