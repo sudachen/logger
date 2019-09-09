@@ -77,12 +77,12 @@ func init() {
 // If the logFile passed in also satisfies io.Closer, logFile.Close will be called
 // when closing the logger.
 func Init(name string, verbose, _ bool, logFile io.Writer) *Logger {
-	makeLog := func(level severity, w...io.Writer) *log.Logger {
+	makeLog := func(level severity, w ...io.Writer) *log.Logger {
 		var tag string
 		var a []io.Writer
 		var v io.Writer
-		if logFile != nil{
-			a = append(a,logFile)
+		if logFile != nil {
+			a = append(a, logFile)
 		}
 		switch level {
 		case sInfo:
@@ -98,10 +98,10 @@ func Init(name string, verbose, _ bool, logFile io.Writer) *Logger {
 			v = os.Stderr
 			tag = tagFatal
 		}
-		a = append(a, w...)
 		if verbose {
 			a = append(a, v)
 		}
+		a = append(a, w...)
 		return log.New(io.MultiWriter(a...), tag, flags)
 	}
 
@@ -112,7 +112,7 @@ func Init(name string, verbose, _ bool, logFile io.Writer) *Logger {
 		fatalLog:   makeLog(sFatal, sentryFatalLog),
 	}
 
-	l.closers = append(l.closers,sentryFatalLog)
+	l.closers = append(l.closers, sentryFatalLog)
 	if logFile != nil {
 		if c, ok := logFile.(io.Closer); ok && c != nil {
 			l.closers = append(l.closers, c)
@@ -423,7 +423,7 @@ func sentryOutput(p []byte, level sentry.Level) {
 
 func (sn *snio) Write(p []byte) (n int, err error) {
 	if sentry.CurrentHub().Client() != nil {
-		sentryOutput(p,sn.level)
+		sentryOutput(p, sn.level)
 	}
 	return 0, nil
 }
